@@ -40,6 +40,57 @@ function App() {
 
   const matchingStorageIds = getMatchingStorages()
 
+  // Collision padding to prevent overlap between furniture
+  const COLLISION_PADDING = 0.05
+
+  // Get effective collision size based on rotation
+  // When rotated 90° or 270°, width and depth are swapped
+  const getEffectiveSize = (furnitureSize, furnitureRotation = 0) => {
+    const [w, h, d] = furnitureSize
+    const isRotated90or270 = furnitureRotation === 90 || furnitureRotation === 270
+    return isRotated90or270 ? [d, h, w] : [w, h, d]
+  }
+
+  const getCollisionSize = (furnitureSize, furnitureRotation = 0) => {
+    const [w, h, d] = getEffectiveSize(furnitureSize, furnitureRotation)
+    return [w + COLLISION_PADDING * 2, h, d + COLLISION_PADDING * 2]
+  }
+
+  // Check if two boxes overlap (AABB collision)
+  const checkCollision = (pos1, size1, pos2, size2) => {
+    return (
+      Math.abs(pos1[0] - pos2[0]) < (size1[0] + size2[0]) / 2 &&
+      Math.abs(pos1[2] - pos2[2]) < (size1[2] + size2[2]) / 2
+    )
+  }
+
+  // Check if rotation would cause collision or go out of bounds
+  const canRotate = (item, newRotation) => {
+    const newEffectiveSize = getEffectiveSize(item.size, newRotation)
+    const newCollisionSize = getCollisionSize(item.size, newRotation)
+    
+    // Check room boundaries (room is 10x10, centered at origin)
+    const halfX = newEffectiveSize[0] / 2
+    const halfZ = newEffectiveSize[2] / 2
+    const [x, , z] = item.position
+    
+    if (x - halfX < -5 || x + halfX > 5 || z - halfZ < -5 || z + halfZ > 5) {
+      return false // Would go out of bounds
+    }
+    
+    // Check collision with other furniture
+    for (const other of furniture) {
+      if (other.id !== item.id) {
+        const otherCollisionSize = getCollisionSize(other.size, other.rotation || 0)
+        if (checkCollision(item.position, newCollisionSize, other.position, otherCollisionSize)) {
+          return false // Would collide with another furniture
+        }
+      }
+    }
+    
+    return true
+  }
+
   // Add new furniture to the room
   const addFurniture = (catalogItem) => {
     const newItem = {
@@ -49,10 +100,45 @@ function App() {
       position: [0, catalogItem.size[1] / 2, 0], // Place in center, on floor
       size: catalogItem.size,
       color: catalogItem.color,
+      rotation: 0, // Rotation in degrees (0, 90, 180, 270)
       items: [], // Empty - user can add items later
     }
     setFurniture(prevFurniture => [...prevFurniture, newItem])
     setShowCatalog(false)
+  }
+
+  // Rotate furniture by 90 degrees
+  const handleRotate = (id, direction) => {
+    const item = furniture.find(f => f.id === id)
+    if (!item) return
+
+    // Calculate new rotation (0, 90, 180, 270)
+    let newRotation = item.rotation || 0
+    if (direction === 'left') {
+      newRotation = (newRotation - 90 + 360) % 360
+    } else {
+      newRotation = (newRotation + 90) % 360
+    }
+
+    // Check if rotation is allowed (no collision, within bounds)
+    if (!canRotate(item, newRotation)) {
+      alert('Cannot rotate: would collide with another furniture or wall!')
+      return
+    }
+
+    setFurniture(prevFurniture => {
+      const updatedFurniture = prevFurniture.map(f => 
+        f.id === id ? { ...f, rotation: newRotation } : f
+      )
+      
+      // Update selected box if it's the one being rotated
+      if (selectedBox?.id === id) {
+        const updatedBox = updatedFurniture.find(f => f.id === id)
+        setSelectedBox(updatedBox)
+      }
+      
+      return updatedFurniture
+    })
   }
 
   // Update furniture position after drag
@@ -276,7 +362,49 @@ function App() {
         }}>
           <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>📦 {selectedBox.label}</h3>
           <p style={{ margin: '0 0 15px 0', color: '#666', fontSize: '12px' }}>
-            Drag to move
+            Drag to move • Click buttons to rotate
+          </p>
+
+          {/* Rotation Controls */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '10px', 
+            marginBottom: '15px',
+            justifyContent: 'center'
+          }}>
+            <button
+              onClick={() => handleRotate(selectedBox.id, 'left')}
+              style={{
+                padding: '10px 16px',
+                background: '#3498db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold',
+              }}
+            >
+              ↺ Rotate Left
+            </button>
+            <button
+              onClick={() => handleRotate(selectedBox.id, 'right')}
+              style={{
+                padding: '10px 16px',
+                background: '#3498db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold',
+              }}
+            >
+              Rotate Right ↻
+            </button>
+          </div>
+          <p style={{ margin: '0 0 15px 0', color: '#888', fontSize: '11px', textAlign: 'center' }}>
+            Current rotation: {selectedBox.rotation || 0}°
           </p>
 
           {/* Items Section */}

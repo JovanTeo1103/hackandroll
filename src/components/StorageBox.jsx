@@ -9,6 +9,7 @@ function StorageBox({
   color = '#8B4513', 
   label = 'Storage Box', 
   items = [],
+  rotation = 0,
   onClick,
   onDragEnd,
   isSelected,
@@ -28,10 +29,21 @@ function StorageBox({
   // Collision padding to prevent overlap between furniture
   const COLLISION_PADDING = 0.05
 
-  const getCollisionSize = (furnitureSize) => {
-    const [w, h, d] = furnitureSize || size
+  // Get effective collision size based on rotation
+  // When rotated 90° or 270°, width and depth are swapped
+  const getEffectiveSize = (furnitureSize, furnitureRotation = 0) => {
+    const [w, h, d] = furnitureSize
+    const isRotated90or270 = furnitureRotation === 90 || furnitureRotation === 270
+    return isRotated90or270 ? [d, h, w] : [w, h, d]
+  }
+
+  const getCollisionSize = (furnitureSize, furnitureRotation = 0) => {
+    const [w, h, d] = getEffectiveSize(furnitureSize, furnitureRotation)
     return [w + COLLISION_PADDING * 2, h, d + COLLISION_PADDING * 2]
   }
+
+  // Get our own effective size for boundary and collision checks
+  const effectiveSize = getEffectiveSize(size, rotation)
 
   // Sync position when prop changes
   useEffect(() => {
@@ -53,20 +65,20 @@ function StorageBox({
       if (raycaster.ray.intersectPlane(dragPlane.current, intersection.current)) {
         const newPos = intersection.current.sub(offset.current)
         
-        // Clamp to room boundaries using actual furniture size (no padding for walls)
-        const halfX = size[0] / 2
-        const halfZ = size[2] / 2
+        // Clamp to room boundaries using effective size (accounts for rotation)
+        const halfX = effectiveSize[0] / 2
+        const halfZ = effectiveSize[2] / 2
         let clampedX = Math.max(-5 + halfX, Math.min(5 - halfX, newPos.x))
         let clampedZ = Math.max(-5 + halfZ, Math.min(5 - halfZ, newPos.z))
         
-        // Check collision with other furniture using their actual collision sizes
-        const selfCollisionSize = getCollisionSize(size)
+        // Check collision with other furniture using their effective collision sizes
+        const selfCollisionSize = getCollisionSize(size, rotation)
         const testPos = [clampedX, position[1], clampedZ]
         let hasCollision = false
         
         for (const furniture of allFurniture) {
           if (furniture.id !== id) {
-            const otherCollisionSize = getCollisionSize(furniture.size)
+            const otherCollisionSize = getCollisionSize(furniture.size, furniture.rotation || 0)
             if (checkCollision(testPos, selfCollisionSize, furniture.position, otherCollisionSize)) {
               hasCollision = true
               break
@@ -118,9 +130,9 @@ function StorageBox({
     if (raycaster.ray.intersectPlane(dragPlane.current, intersection.current)) {
       const newPos = intersection.current.sub(offset.current)
       
-      // Clamp to room boundaries using actual furniture size (no padding for walls)
-      const halfX = size[0] / 2
-      const halfZ = size[2] / 2
+      // Clamp to room boundaries using effective size (accounts for rotation)
+      const halfX = effectiveSize[0] / 2
+      const halfZ = effectiveSize[2] / 2
       const clampedX = Math.max(-5 + halfX, Math.min(5 - halfX, newPos.x))
       const clampedZ = Math.max(-5 + halfZ, Math.min(5 - halfZ, newPos.z))
       
@@ -164,9 +176,12 @@ function StorageBox({
     return () => window.removeEventListener('pointerup', handleWindowPointerUp)
   }, [isDragging])
 
+  // Convert rotation degrees to radians for Three.js
+  const rotationRadians = (rotation * Math.PI) / 180
+
   return (
     <>
-    <group ref={groupRef} position={pos}>
+    <group ref={groupRef} position={pos} rotation={[0, rotationRadians, 0]}>
       {/* Main box */}
       <mesh
         ref={meshRef}

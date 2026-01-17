@@ -64,6 +64,7 @@ function Room({ furniture = [], selectedId, matchingStorageIds = [], onBoxClick,
           color={item.color}
           label={item.label}
           items={item.items}
+          rotation={item.rotation || 0}
           isSelected={selectedId === item.id}
           isHighlighted={matchingStorageIds.includes(item.id)}
           onClick={onBoxClick}
