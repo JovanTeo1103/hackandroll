@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import Room from './components/Room'
 import { ErrorPopup } from './components/ErrorPopup'
+import { SuccessPopup } from './components/SuccessPopup'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { furnitureCatalog } from './data/furnitureCatalog'
 import './App.css'
 
 function App() {
   const [selectedBox, setSelectedBox] = useState(null)
+  const [successMessage, setSuccessMessage] = useState('')
   const [furniture, setFurniture] = useState(() => {
     // Load furniture from localStorage on mount
     const saved = localStorage.getItem('roomFurniture')
@@ -23,6 +25,45 @@ function App() {
   useEffect(() => {
     localStorage.setItem('roomFurniture', JSON.stringify(furniture))
   }, [furniture])
+
+  // Load shared data from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const sharedData = params.get('data')
+    if (sharedData) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(atob(sharedData)))
+        if (decoded && Array.isArray(decoded)) {
+          setFurniture(decoded)
+          localStorage.setItem('roomFurniture', JSON.stringify(decoded))
+          // Clean URL after loading
+          window.history.replaceState({}, '', window.location.pathname)
+        }
+      } catch (e) {
+        console.error('Error loading shared data:', e)
+      }
+    }
+  }, [])
+
+  // Deployed URL for sharing
+  const DEPLOYED_URL = 'https://hackandroll-one.vercel.app'
+
+  // Generate shareable URL with all data
+  const getShareableUrl = () => {
+    try {
+      const encoded = btoa(encodeURIComponent(JSON.stringify(furniture)))
+      return `${DEPLOYED_URL}?data=${encoded}`
+    } catch (e) {
+      return DEPLOYED_URL
+    }
+  }
+
+  // Copy share link to clipboard
+  const copyShareLink = () => {
+    const url = getShareableUrl()
+    navigator.clipboard.writeText(url)
+    setSuccessMessage('Share link copied to clipboard! Open this link on another device to sync your room.')
+  }
 
   // Search for items in storage and get matching storage IDs
   const getMatchingStorages = () => {
@@ -234,6 +275,12 @@ function App() {
         onClose={() => setErrorMessage(null)}
       />
 
+      {/* Success Popup */}
+      <SuccessPopup 
+        message={successMessage}
+        onClose={() => setSuccessMessage('')}
+      />
+
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         title="Delete Furniture"
@@ -263,6 +310,28 @@ function App() {
         }}
       >
         {showCatalog ? '✕ Close' : '+ Add Furniture'}
+      </button>
+
+      {/* Share Room Button */}
+      <button
+        onClick={copyShareLink}
+        style={{
+          position: 'absolute',
+          top: 20,
+          left: 200,
+          padding: '12px 24px',
+          background: '#9b59b6',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontSize: '16px',
+          fontWeight: 'bold',
+          zIndex: 100,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+        }}
+      >
+        📤 Share Room
       </button>
 
       {/* Search Bar */}
