@@ -68,6 +68,7 @@ function Room({ furniture = [], selectedId, onBoxClick, onDragEnd, onDelete }) {
           onClick={onBoxClick}
           onDragEnd={onDragEnd}
           onDelete={onDelete}
+          allFurniture={furniture}
         />
       ))}
     </group>

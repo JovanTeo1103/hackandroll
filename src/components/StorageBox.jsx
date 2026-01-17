@@ -12,7 +12,8 @@ function StorageBox({
   onClick,
   onDragEnd,
   onDelete,
-  isSelected 
+  isSelected,
+  allFurniture = []
 }) {
   const [hovered, setHovered] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -29,6 +30,15 @@ function StorageBox({
     setPos(position)
   }, [position])
 
+  // Check if two boxes overlap (AABB collision)
+  const checkCollision = (pos1, size1, pos2, size2) => {
+    const margin = 0.1 // Small margin to prevent touching
+    return (
+      Math.abs(pos1[0] - pos2[0]) < (size1[0] + size2[0]) / 2 + margin &&
+      Math.abs(pos1[2] - pos2[2]) < (size1[2] + size2[2]) / 2 + margin
+    )
+  }
+
   // Handle pointer move during drag
   useFrame(() => {
     if (isDragging && groupRef.current) {
@@ -37,12 +47,28 @@ function StorageBox({
         const newPos = intersection.current.sub(offset.current)
         
         // Clamp to room boundaries
-        const clampedX = Math.max(-4, Math.min(4, newPos.x))
-        const clampedZ = Math.max(-4, Math.min(4, newPos.z))
+        let clampedX = Math.max(-4, Math.min(4, newPos.x))
+        let clampedZ = Math.max(-4, Math.min(4, newPos.z))
         
-        groupRef.current.position.x = clampedX
-        groupRef.current.position.z = clampedZ
-        groupRef.current.position.y = position[1]
+        // Check collision with other furniture
+        const testPos = [clampedX, position[1], clampedZ]
+        let hasCollision = false
+        
+        for (const furniture of allFurniture) {
+          if (furniture.id !== id) {
+            if (checkCollision(testPos, size, furniture.position, furniture.size)) {
+              hasCollision = true
+              break
+            }
+          }
+        }
+        
+        // Only update position if no collision
+        if (!hasCollision) {
+          groupRef.current.position.x = clampedX
+          groupRef.current.position.z = clampedZ
+          groupRef.current.position.y = position[1]
+        }
       }
     }
   })
