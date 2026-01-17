@@ -53,14 +53,14 @@ function StorageBox({
       if (raycaster.ray.intersectPlane(dragPlane.current, intersection.current)) {
         const newPos = intersection.current.sub(offset.current)
         
-        // Clamp to room boundaries using this furniture's actual collision size
-        const selfCollisionSize = getCollisionSize(size)
-        const halfX = selfCollisionSize[0] / 2
-        const halfZ = selfCollisionSize[2] / 2
-        let clampedX = Math.max(-4 + halfX, Math.min(4 - halfX, newPos.x))
-        let clampedZ = Math.max(-4 + halfZ, Math.min(4 - halfZ, newPos.z))
+        // Clamp to room boundaries using actual furniture size (no padding for walls)
+        const halfX = size[0] / 2
+        const halfZ = size[2] / 2
+        let clampedX = Math.max(-5 + halfX, Math.min(5 - halfX, newPos.x))
+        let clampedZ = Math.max(-5 + halfZ, Math.min(5 - halfZ, newPos.z))
         
         // Check collision with other furniture using their actual collision sizes
+        const selfCollisionSize = getCollisionSize(size)
         const testPos = [clampedX, position[1], clampedZ]
         let hasCollision = false
         
@@ -118,12 +118,11 @@ function StorageBox({
     if (raycaster.ray.intersectPlane(dragPlane.current, intersection.current)) {
       const newPos = intersection.current.sub(offset.current)
       
-      // Clamp to room boundaries using this furniture's actual collision size
-      const selfCollisionSize = getCollisionSize(size)
-      const halfX = selfCollisionSize[0] / 2
-      const halfZ = selfCollisionSize[2] / 2
-      const clampedX = Math.max(-4 + halfX, Math.min(4 - halfX, newPos.x))
-      const clampedZ = Math.max(-4 + halfZ, Math.min(4 - halfZ, newPos.z))
+      // Clamp to room boundaries using actual furniture size (no padding for walls)
+      const halfX = size[0] / 2
+      const halfZ = size[2] / 2
+      const clampedX = Math.max(-5 + halfX, Math.min(5 - halfX, newPos.x))
+      const clampedZ = Math.max(-5 + halfZ, Math.min(5 - halfZ, newPos.z))
       
       groupRef.current.position.x = clampedX
       groupRef.current.position.z = clampedZ
