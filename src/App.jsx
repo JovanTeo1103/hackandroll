@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import Room from './components/Room'
 import { furnitureCatalog } from './data/furnitureCatalog'
@@ -6,9 +6,18 @@ import './App.css'
 
 function App() {
   const [selectedBox, setSelectedBox] = useState(null)
-  const [furniture, setFurniture] = useState([]) // Start with empty room
+  const [furniture, setFurniture] = useState(() => {
+    // Load furniture from localStorage on mount
+    const saved = localStorage.getItem('roomFurniture')
+    return saved ? JSON.parse(saved) : []
+  })
   const [showCatalog, setShowCatalog] = useState(false)
   const [newItemName, setNewItemName] = useState('')
+
+  // Save furniture to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('roomFurniture', JSON.stringify(furniture))
+  }, [furniture])
 
   // Add new furniture to the room
   const addFurniture = (catalogItem) => {
@@ -21,13 +30,13 @@ function App() {
       color: catalogItem.color,
       items: [], // Empty - user can add items later
     }
-    setFurniture([...furniture, newItem])
+    setFurniture(prevFurniture => [...prevFurniture, newItem])
     setShowCatalog(false)
   }
 
   // Update furniture position after drag
   const handleDragEnd = (id, newPosition) => {
-    setFurniture(furniture.map(item => 
+    setFurniture(prevFurniture => prevFurniture.map(item => 
       item.id === id ? { ...item, position: newPosition } : item
     ))
   }
@@ -35,7 +44,7 @@ function App() {
   // Delete furniture
   const handleDelete = (id) => {
     if (window.confirm('Delete this furniture?')) {
-      setFurniture(furniture.filter(item => item.id !== id))
+      setFurniture(prevFurniture => prevFurniture.filter(item => item.id !== id))
       if (selectedBox?.id === id) {
         setSelectedBox(null)
       }
@@ -51,21 +60,24 @@ function App() {
   const addItemToBox = (itemName) => {
     if (!selectedBox || !itemName.trim()) return
     
-    const updatedFurniture = furniture.map(item => {
-      if (item.id === selectedBox.id) {
-        const newItems = [
-          ...item.items,
-          { id: Date.now(), name: itemName }
-        ]
-        return { ...item, items: newItems }
-      }
-      return item
+    setFurniture(prevFurniture => {
+      const updatedFurniture = prevFurniture.map(item => {
+        if (item.id === selectedBox.id) {
+          const newItems = [
+            ...item.items,
+            { id: Date.now(), name: itemName }
+          ]
+          return { ...item, items: newItems }
+        }
+        return item
+      })
+      
+      // Update selected box with new items
+      const updatedBox = updatedFurniture.find(item => item.id === selectedBox.id)
+      setSelectedBox(updatedBox)
+      
+      return updatedFurniture
     })
-    setFurniture(updatedFurniture)
-    
-    // Update selected box with new items
-    const updatedBox = updatedFurniture.find(item => item.id === selectedBox.id)
-    setSelectedBox(updatedBox)
     setNewItemName('')
   }
 
@@ -73,17 +85,20 @@ function App() {
   const removeItemFromBox = (itemId) => {
     if (!selectedBox) return
     
-    const updatedFurniture = furniture.map(item => {
-      if (item.id === selectedBox.id) {
-        return { ...item, items: item.items.filter(i => i.id !== itemId) }
-      }
-      return item
+    setFurniture(prevFurniture => {
+      const updatedFurniture = prevFurniture.map(item => {
+        if (item.id === selectedBox.id) {
+          return { ...item, items: item.items.filter(i => i.id !== itemId) }
+        }
+        return item
+      })
+      
+      // Update selected box with new items
+      const updatedBox = updatedFurniture.find(item => item.id === selectedBox.id)
+      setSelectedBox(updatedBox)
+      
+      return updatedFurniture
     })
-    setFurniture(updatedFurniture)
-    
-    // Update selected box with new items
-    const updatedBox = updatedFurniture.find(item => item.id === selectedBox.id)
-    setSelectedBox(updatedBox)
   }
 
   return (
