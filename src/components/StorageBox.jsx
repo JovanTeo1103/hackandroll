@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
-import { DragControls } from '@react-three/drei'
+import { useFrame, useThree } from '@react-three/fiber'
+import * as THREE from 'three'
 
 function StorageBox({ 
   id,
@@ -15,13 +15,37 @@ function StorageBox({
   isSelected 
 }) {
   const [hovered, setHovered] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const [pos, setPos] = useState(position)
   const groupRef = useRef()
+  const meshRef = useRef()
+  const dragPlane = useRef(new THREE.Plane())
+  const intersection = useRef(new THREE.Vector3())
+  const offset = useRef(new THREE.Vector3())
+  const { camera, gl, raycaster, pointer } = useThree()
 
   // Sync position when prop changes
   useEffect(() => {
     setPos(position)
   }, [position])
+
+  // Handle pointer move during drag
+  useFrame(() => {
+    if (isDragging && groupRef.current) {
+      raycaster.setFromCamera(pointer, camera)
+      if (raycaster.ray.intersectPlane(dragPlane.current, intersection.current)) {
+        const newPos = intersection.current.sub(offset.current)
+        
+        // Clamp to room boundaries
+        const clampedX = Math.max(-4, Math.min(4, newPos.x))
+        const clampedZ = Math.max(-4, Math.min(4, newPos.z))
+        
+        groupRef.current.position.x = clampedX
+        groupRef.current.position.z = clampedZ
+        groupRef.current.position.y = position[1]
+      }
+    }
+  })
 
   const handleClick = (event) => {
     event.stopPropagation()
@@ -38,21 +62,48 @@ function StorageBox({
     }
   }
 
-  const handleDrag = () => {
-    if (groupRef.current) {
-      const newPos = [
-        Math.max(-4, Math.min(4, groupRef.current.position.x)),
-        position[1], // Keep Y fixed
-        Math.max(-4, Math.min(4, groupRef.current.position.z))
-      ]
-      // Clamp position during drag
-      groupRef.current.position.x = newPos[0]
-      groupRef.current.position.z = newPos[2]
-      groupRef.current.position.y = newPos[1]
+  const handlePointerDown = (event) => {
+    event.stopPropagation()
+    setIsDragging(true)
+    
+    // Set up drag plane at floor level (Y=0)
+    dragPlane.current.setFromNormalAndCoplanarPoint(
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(0, position[1], 0)
+    )
+    
+    // Calculate offset from click point to object center
+    raycaster.setFromCamera(pointer, camera)
+    raycaster.ray.intersectPlane(dragPlane.current, intersection.current)
+    offset.current.copy(intersection.current).sub(groupRef.current.position)
+    
+    gl.domElement.style.cursor = 'grabbing'
+  }
+
+  const handlePointerMove = (event) => {
+    if (!isDragging) return
+    event.stopPropagation()
+    
+    // Calculate new position on the drag plane
+    raycaster.setFromCamera(pointer, camera)
+    if (raycaster.ray.intersectPlane(dragPlane.current, intersection.current)) {
+      const newPos = intersection.current.sub(offset.current)
+      
+      // Clamp to room boundaries
+      const clampedX = Math.max(-4, Math.min(4, newPos.x))
+      const clampedZ = Math.max(-4, Math.min(4, newPos.z))
+      
+      groupRef.current.position.x = clampedX
+      groupRef.current.position.z = clampedZ
+      groupRef.current.position.y = position[1]
     }
   }
 
-  const handleDragEnd = () => {
+  const handlePointerUp = (event) => {
+    if (!isDragging) return
+    event.stopPropagation()
+    setIsDragging(false)
+    
     if (groupRef.current && onDragEnd) {
       const newPos = [
         groupRef.current.position.x,
@@ -62,29 +113,32 @@ function StorageBox({
       setPos(newPos)
       onDragEnd(id, newPos)
     }
+    
+    gl.domElement.style.cursor = hovered ? 'grab' : 'auto'
   }
 
   return (
-    <DragControls
-      autoTransform
-      onDrag={handleDrag}
-      onDragEnd={handleDragEnd}
-    >
-      <group ref={groupRef} position={pos}>
-        {/* Main box */}
-        <mesh
-          onClick={handleClick}
-          onContextMenu={handleRightClick}
-          onPointerOver={(e) => {
-            e.stopPropagation()
-            setHovered(true)
-            document.body.style.cursor = 'grab'
-          }}
-          onPointerOut={(e) => {
-            setHovered(false)
+    <>
+    <group ref={groupRef} position={pos}>
+      {/* Main box */}
+      <mesh
+        ref={meshRef}
+        onClick={handleClick}
+        onContextMenu={handleRightClick}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          setHovered(true)
+          document.body.style.cursor = 'grab'
+        }}
+        onPointerOut={(e) => {
+          setHovered(false)
+          if (!isDragging) {
             document.body.style.cursor = 'auto'
-          }}
-        >
+          }
+        }}
+      >
           <boxGeometry args={size} />
           <meshStandardMaterial 
             color={isSelected ? '#FFD700' : hovered ? '#A0522D' : color}
@@ -97,7 +151,7 @@ function StorageBox({
           <meshStandardMaterial color={isSelected ? '#FFA500' : hovered ? '#CD853F' : '#A0522D'} />
         </mesh>
       </group>
-    </DragControls>
+    </>
   )
 }
 
