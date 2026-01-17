@@ -424,7 +424,8 @@ function App() {
 
       <Canvas
         shadows
-        camera={{ position: [0, 10, 12], fov: 50 }}
+        camera={{ position: [0, 10, 12], fov: 50  }}
+        style={{ marginTop: '40px' }}
       >
         <ambientLight intensity={0.4} />
         <directionalLight
