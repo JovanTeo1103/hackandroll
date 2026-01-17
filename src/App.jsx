@@ -7,65 +7,132 @@ import { ConfirmDialog } from './components/ConfirmDialog'
 import { furnitureCatalog } from './data/furnitureCatalog'
 import './App.css'
 
+const createNewRoom = (name = 'New Room') => ({
+  id: Date.now(),
+  name,
+  furniture: []
+})
+
 function App() {
   const [selectedBox, setSelectedBox] = useState(null)
   const [successMessage, setSuccessMessage] = useState('')
-  const [furniture, setFurniture] = useState(() => {
-    // Load furniture from localStorage on mount
-    const saved = localStorage.getItem('roomFurniture')
-    return saved ? JSON.parse(saved) : []
+  
+  const [rooms, setRooms] = useState(() => {
+    const saved = localStorage.getItem('allRooms')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed) && parsed.length > 0 && !parsed[0].furniture) {
+        const oldFurniture = JSON.parse(localStorage.getItem('roomFurniture') || '[]')
+        return [{ id: 1, name: 'My Room', furniture: oldFurniture }]
+      }
+      return parsed
+    }
+    const oldFurniture = localStorage.getItem('roomFurniture')
+    if (oldFurniture) {
+      return [{ id: 1, name: 'My Room', furniture: JSON.parse(oldFurniture) }]
+    }
+    return [createNewRoom('My Room')]
   })
+  const [currentRoomId, setCurrentRoomId] = useState(() => {
+    const saved = localStorage.getItem('currentRoomId')
+    return saved ? parseInt(saved) : (rooms[0]?.id || 1)
+  })
+  const [showRoomPanel, setShowRoomPanel] = useState(true)
+  const [editingRoomId, setEditingRoomId] = useState(null)
+  const [newRoomName, setNewRoomName] = useState('')
+
+  const currentRoom = rooms.find(r => r.id === currentRoomId) || rooms[0]
+  const furniture = currentRoom?.furniture || []
+
+  const setFurniture = (updater) => {
+    setRooms(prevRooms => prevRooms.map(room => {
+      if (room.id === currentRoomId) {
+        const newFurniture = typeof updater === 'function' 
+          ? updater(room.furniture) 
+          : updater
+        return { ...room, furniture: newFurniture }
+      }
+      return room
+    }))
+  }
+
   const [showCatalog, setShowCatalog] = useState(false)
   const [newItemName, setNewItemName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [errorMessage, setErrorMessage] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, id: null })
 
-  // Save furniture to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem('roomFurniture', JSON.stringify(furniture))
-  }, [furniture])
+    localStorage.setItem('allRooms', JSON.stringify(rooms))
+  }, [rooms])
 
-  // Load shared data from URL on mount
+  useEffect(() => {
+    localStorage.setItem('currentRoomId', currentRoomId.toString())
+  }, [currentRoomId])
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const sharedData = params.get('data')
     if (sharedData) {
       try {
         const decoded = JSON.parse(decodeURIComponent(atob(sharedData)))
-        if (decoded && Array.isArray(decoded)) {
-          setFurniture(decoded)
-          localStorage.setItem('roomFurniture', JSON.stringify(decoded))
-          // Clean URL after loading
-          window.history.replaceState({}, '', window.location.pathname)
+        if (Array.isArray(decoded) && decoded.length > 0 && decoded[0].furniture) {
+          setRooms(decoded)
+          setCurrentRoomId(decoded[0].id)
+        } else if (Array.isArray(decoded)) {
+          setRooms([{ id: 1, name: 'Shared Room', furniture: decoded }])
+          setCurrentRoomId(1)
         }
+        window.history.replaceState({}, '', window.location.pathname)
       } catch (e) {
         console.error('Error loading shared data:', e)
       }
     }
   }, [])
 
-  // Deployed URL for sharing
+  const addRoom = () => {
+    const newRoom = createNewRoom(`Room ${rooms.length + 1}`)
+    setRooms(prev => [...prev, newRoom])
+    setCurrentRoomId(newRoom.id)
+    setSelectedBox(null)
+  }
+
+  const deleteRoom = (roomId) => {
+    if (rooms.length <= 1) {
+      setErrorMessage('You need at least one room!')
+      return
+    }
+    setRooms(prev => prev.filter(r => r.id !== roomId))
+    if (currentRoomId === roomId) {
+      setCurrentRoomId(rooms.find(r => r.id !== roomId)?.id)
+      setSelectedBox(null)
+    }
+  }
+
+  const renameRoom = (roomId, newName) => {
+    setRooms(prev => prev.map(r => 
+      r.id === roomId ? { ...r, name: newName } : r
+    ))
+    setEditingRoomId(null)
+  }
+
   const DEPLOYED_URL = 'https://hackandroll-one.vercel.app'
 
-  // Generate shareable URL with all data
   const getShareableUrl = () => {
     try {
-      const encoded = btoa(encodeURIComponent(JSON.stringify(furniture)))
+      const encoded = btoa(encodeURIComponent(JSON.stringify(rooms)))
       return `${DEPLOYED_URL}?data=${encoded}`
     } catch (e) {
       return DEPLOYED_URL
     }
   }
 
-  // Copy share link to clipboard
   const copyShareLink = () => {
     const url = getShareableUrl()
     navigator.clipboard.writeText(url)
     setSuccessMessage('Share link copied to clipboard! Open this link on another device to sync your room.')
   }
 
-  // Search for items in storage and get matching storage IDs
   const getMatchingStorages = () => {
     if (!searchQuery.trim()) return []
     
@@ -85,11 +152,8 @@ function App() {
 
   const matchingStorageIds = getMatchingStorages()
 
-  // Collision padding to prevent overlap between furniture
   const COLLISION_PADDING = 0.05
 
-  // Get effective collision size based on rotation
-  // When rotated 90° or 270°, width and depth are swapped
   const getEffectiveSize = (furnitureSize, furnitureRotation = 0) => {
     const [w, h, d] = furnitureSize
     const isRotated90or270 = furnitureRotation === 90 || furnitureRotation === 270
@@ -101,7 +165,6 @@ function App() {
     return [w + COLLISION_PADDING * 2, h, d + COLLISION_PADDING * 2]
   }
 
-  // Check if two boxes overlap (AABB collision)
   const checkCollision = (pos1, size1, pos2, size2) => {
     return (
       Math.abs(pos1[0] - pos2[0]) < (size1[0] + size2[0]) / 2 &&
@@ -109,26 +172,23 @@ function App() {
     )
   }
 
-  // Check if rotation would cause collision or go out of bounds
   const canRotate = (item, newRotation) => {
     const newEffectiveSize = getEffectiveSize(item.size, newRotation)
     const newCollisionSize = getCollisionSize(item.size, newRotation)
     
-    // Check room boundaries (room is 10x10, centered at origin)
     const halfX = newEffectiveSize[0] / 2
     const halfZ = newEffectiveSize[2] / 2
     const [x, , z] = item.position
     
     if (x - halfX < -5 || x + halfX > 5 || z - halfZ < -5 || z + halfZ > 5) {
-      return false // Would go out of bounds
+      return false
     }
     
-    // Check collision with other furniture
     for (const other of furniture) {
       if (other.id !== item.id) {
         const otherCollisionSize = getCollisionSize(other.size, other.rotation || 0)
         if (checkCollision(item.position, newCollisionSize, other.position, otherCollisionSize)) {
-          return false // Would collide with another furniture
+          return false
         }
       }
     }
@@ -136,28 +196,25 @@ function App() {
     return true
   }
 
-  // Add new furniture to the room
   const addFurniture = (catalogItem) => {
     const newItem = {
-      id: Date.now(), // Unique ID
+      id: Date.now(),
       label: catalogItem.label,
       type: catalogItem.type,
-      position: [0, catalogItem.size[1] / 2, 0], // Place in center, on floor
+      position: [0, catalogItem.size[1] / 2, 0],
       size: catalogItem.size,
       color: catalogItem.color,
-      rotation: 0, // Rotation in degrees (0, 90, 180, 270)
-      items: [], // Empty - user can add items later
+      rotation: 0,
+      items: [],
     }
     setFurniture(prevFurniture => [...prevFurniture, newItem])
     setShowCatalog(false)
   }
 
-  // Rotate furniture by 90 degrees
   const handleRotate = (id, direction) => {
     const item = furniture.find(f => f.id === id)
     if (!item) return
 
-    // Calculate new rotation (0, 90, 180, 270)
     let newRotation = item.rotation || 0
     if (direction === 'left') {
       newRotation = (newRotation - 90 + 360) % 360
@@ -165,7 +222,6 @@ function App() {
       newRotation = (newRotation + 90) % 360
     }
 
-    // Check if rotation is allowed (no collision, within bounds)
     if (!canRotate(item, newRotation)) {
       setErrorMessage('Cannot rotate: would collide with another furniture or wall!')
       return
@@ -176,7 +232,6 @@ function App() {
         f.id === id ? { ...f, rotation: newRotation } : f
       )
       
-      // Update selected box if it's the one being rotated
       if (selectedBox?.id === id) {
         const updatedBox = updatedFurniture.find(f => f.id === id)
         setSelectedBox(updatedBox)
@@ -186,19 +241,16 @@ function App() {
     })
   }
 
-  // Update furniture position after drag
   const handleDragEnd = (id, newPosition) => {
     setFurniture(prevFurniture => prevFurniture.map(item => 
       item.id === id ? { ...item, position: newPosition } : item
     ))
   }
 
-  // Delete furniture
   const handleDelete = (id) => {
     setDeleteConfirm({ isOpen: true, id })
   }
 
-  // Confirm delete
   const confirmDelete = () => {
     if (deleteConfirm.id) {
       setFurniture(prevFurniture => prevFurniture.filter(item => item.id !== deleteConfirm.id))
@@ -209,17 +261,14 @@ function App() {
     }
   }
 
-  // Cancel delete
   const cancelDelete = () => {
     setDeleteConfirm({ isOpen: false, id: null })
   }
 
-  // Select furniture to view/edit
   const handleBoxClick = (boxInfo) => {
     setSelectedBox(boxInfo)
   }
 
-  // Add item to storage box
   const addItemToBox = (itemName) => {
     if (!selectedBox || !itemName.trim()) return
     
@@ -235,7 +284,6 @@ function App() {
         return item
       })
       
-      // Update selected box with new items
       const updatedBox = updatedFurniture.find(item => item.id === selectedBox.id)
       setSelectedBox(updatedBox)
       
@@ -244,7 +292,6 @@ function App() {
     setNewItemName('')
   }
 
-  // Remove item from storage box
   const removeItemFromBox = (itemId) => {
     if (!selectedBox) return
     
@@ -256,7 +303,6 @@ function App() {
         return item
       })
       
-      // Update selected box with new items
       const updatedBox = updatedFurniture.find(item => item.id === selectedBox.id)
       setSelectedBox(updatedBox)
       
@@ -266,31 +312,211 @@ function App() {
 
   return (
     <div
-      style={{ width: '100vw', height: '100vh' }}
-      onContextMenu={(e) => e.preventDefault()} // Disable browser context menu
+      style={{ width: '100vw', height: '100vh', display: 'flex' }}
+      onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Error Popup */}
-      <ErrorPopup 
-        message={errorMessage}
-        onClose={() => setErrorMessage(null)}
-      />
+      {/* Room Selector Panel - Left Side */}
+      <div style={{
+        width: showRoomPanel ? '200px' : '50px',
+        height: '100%',
+        background: 'linear-gradient(180deg, #2c3e50 0%, #1a252f 100%)',
+        padding: showRoomPanel ? '15px' : '10px',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'width 0.3s ease',
+        zIndex: 150,
+        boxShadow: '2px 0 10px rgba(0,0,0,0.3)',
+      }}>
+        <button
+          onClick={() => setShowRoomPanel(!showRoomPanel)}
+          style={{
+            background: 'rgba(255,255,255,0.1)',
+            border: 'none',
+            color: 'white',
+            padding: '8px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            marginBottom: '15px',
+            fontSize: '16px',
+          }}
+        >
+          {showRoomPanel ? '◀' : '▶'}
+        </button>
 
-      {/* Success Popup */}
-      <SuccessPopup 
-        message={successMessage}
-        onClose={() => setSuccessMessage('')}
-      />
+        {showRoomPanel && (
+          <>
+            <h3 style={{ 
+              color: 'white', 
+              margin: '0 0 15px 0', 
+              fontSize: '16px',
+              borderBottom: '1px solid rgba(255,255,255,0.2)',
+              paddingBottom: '10px'
+            }}>
+              🏠 Rooms
+            </h3>
 
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        title="Delete Furniture"
-        message="Are you sure you want to delete this furniture? This action cannot be undone."
+            <div style={{ 
+              flex: 1, 
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              {rooms.map(room => (
+                <div
+                  key={room.id}
+                  onClick={() => {
+                    if (editingRoomId !== room.id) {
+                      setCurrentRoomId(room.id)
+                      setSelectedBox(null)
+                    }
+                  }}
+                  style={{
+                    padding: '10px 12px',
+                    background: currentRoomId === room.id 
+                      ? 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)' 
+                      : 'rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {editingRoomId === room.id ? (
+                    <input
+                      key={`edit-${room.id}`}
+                      type="text"
+                      defaultValue={room.name}
+                      onChange={(e) => setNewRoomName(e.target.value)}
+                      onFocus={(e) => {
+                        setNewRoomName(e.target.value)
+                        e.target.select()
+                      }}
+                      onBlur={(e) => {
+                        const value = e.target.value.trim()
+                        if (value) {
+                          renameRoom(room.id, value)
+                        }
+                        setEditingRoomId(null)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const value = e.target.value.trim()
+                          if (value) {
+                            renameRoom(room.id, value)
+                          }
+                          setEditingRoomId(null)
+                        }
+                        if (e.key === 'Escape') {
+                          setEditingRoomId(null)
+                        }
+                      }}
+                      autoFocus
+                      style={{
+                        background: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '4px 8px',
+                        width: '100%',
+                        fontSize: '13px',
+                        color: '#333',
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <>
+                      <span style={{ 
+                        color: 'white', 
+                        fontSize: '13px',
+                        fontWeight: currentRoomId === room.id ? 'bold' : 'normal'
+                      }}>
+                        {room.name}
+                      </span>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingRoomId(room.id)
+                            setNewRoomName(room.name)
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'rgba(255,255,255,0.7)',
+                            cursor: 'pointer',
+                            padding: '2px 6px',
+                            fontSize: '12px',
+                          }}
+                        >
+                          ✏️
+                        </button>
+                        {rooms.length > 1 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteRoom(room.id)
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'rgba(255,255,255,0.7)',
+                              cursor: 'pointer',
+                              padding: '2px 6px',
+                              fontSize: '12px',
+                            }}
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={addRoom}
+              style={{
+                marginTop: '15px',
+                padding: '10px',
+                background: 'rgba(255,255,255,0.15)',
+                border: '2px dashed rgba(255,255,255,0.3)',
+                borderRadius: '8px',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 'bold',
+                transition: 'all 0.2s',
+              }}
+            >
+              + Add Room
+            </button>
+          </>
+        )}
+      </div>
+
+      <div style={{ flex: 1, position: 'relative', height: '100%' }}>
+        <ErrorPopup 
+          message={errorMessage}
+          onClose={() => setErrorMessage(null)}
+        />
+
+        <SuccessPopup 
+          message={successMessage}
+          onClose={() => setSuccessMessage('')}
+        />
+
+        <ConfirmDialog
+          title="Delete Furniture"
+          message="Are you sure you want to delete this furniture? This action cannot be undone."
         isOpen={deleteConfirm.isOpen}
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
       />
       
-      {/* Add Furniture Button */}
       <button
         onClick={() => setShowCatalog(!showCatalog)}
         style={{
@@ -312,7 +538,6 @@ function App() {
         {showCatalog ? '✕ Close' : '+ Add Furniture'}
       </button>
 
-      {/* Share Room Button */}
       <button
         onClick={copyShareLink}
         style={{
@@ -334,10 +559,9 @@ function App() {
         📤 Share Room
       </button>
 
-      {/* Search Bar */}
       <div style={{
         position: 'absolute',
-        top: 20,
+        top: 70,
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 100,
@@ -387,7 +611,6 @@ function App() {
         )}
       </div>
 
-      {/* Furniture Catalog Panel */}
       {showCatalog && (
         <div style={{
           position: 'absolute',
@@ -443,7 +666,6 @@ function App() {
         </div>
       )}
 
-      {/* Selected Furniture Panel */}
       {selectedBox && (
         <div style={{
           position: 'absolute',
@@ -463,7 +685,6 @@ function App() {
             Drag to move • Click buttons to rotate
           </p>
 
-          {/* Rotation Controls */}
           <div style={{ 
             display: 'flex', 
             gap: '10px', 
@@ -505,7 +726,6 @@ function App() {
             Current rotation: {selectedBox.rotation || 0}°
           </p>
 
-          {/* Items Section */}
           <div style={{ marginBottom: '15px' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#555', fontSize: '14px' }}>Items in storage:</h4>
             
@@ -562,7 +782,6 @@ function App() {
               </div>
             )}
 
-            {/* Add Item Input */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
               <input
                 type="text"
@@ -632,7 +851,23 @@ function App() {
         </div>
       )}
 
-      {/* Instructions */}
+      <div style={{
+        position: 'absolute',
+        top: 20,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        background: 'linear-gradient(135deg, #2c3e50 0%, #1a252f 100%)',
+        color: 'white',
+        padding: '8px 20px',
+        borderRadius: '20px',
+        fontSize: '14px',
+        fontWeight: 'bold',
+        zIndex: 100,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+      }}>
+        🏠 {currentRoom?.name || 'Room'}
+      </div>
+
       <div style={{
         position: 'absolute',
         bottom: 20,
@@ -673,6 +908,7 @@ function App() {
 
         {/* No OrbitControls - fixed front view */}
       </Canvas>
+      </div>
     </div>
   )
 }
