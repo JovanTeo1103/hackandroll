@@ -8,6 +8,7 @@ function App() {
   const [selectedBox, setSelectedBox] = useState(null)
   const [furniture, setFurniture] = useState([]) // Start with empty room
   const [showCatalog, setShowCatalog] = useState(false)
+  const [newItemName, setNewItemName] = useState('')
 
   // Add new furniture to the room
   const addFurniture = (catalogItem) => {
@@ -44,6 +45,45 @@ function App() {
   // Select furniture to view/edit
   const handleBoxClick = (boxInfo) => {
     setSelectedBox(boxInfo)
+  }
+
+  // Add item to storage box
+  const addItemToBox = (itemName) => {
+    if (!selectedBox || !itemName.trim()) return
+    
+    const updatedFurniture = furniture.map(item => {
+      if (item.id === selectedBox.id) {
+        const newItems = [
+          ...item.items,
+          { id: Date.now(), name: itemName }
+        ]
+        return { ...item, items: newItems }
+      }
+      return item
+    })
+    setFurniture(updatedFurniture)
+    
+    // Update selected box with new items
+    const updatedBox = updatedFurniture.find(item => item.id === selectedBox.id)
+    setSelectedBox(updatedBox)
+    setNewItemName('')
+  }
+
+  // Remove item from storage box
+  const removeItemFromBox = (itemId) => {
+    if (!selectedBox) return
+    
+    const updatedFurniture = furniture.map(item => {
+      if (item.id === selectedBox.id) {
+        return { ...item, items: item.items.filter(i => i.id !== itemId) }
+      }
+      return item
+    })
+    setFurniture(updatedFurniture)
+    
+    // Update selected box with new items
+    const updatedBox = updatedFurniture.find(item => item.id === selectedBox.id)
+    setSelectedBox(updatedBox)
   }
 
   return (
@@ -138,23 +178,109 @@ function App() {
           borderRadius: '12px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
           zIndex: 100,
-          minWidth: '250px',
+          minWidth: '300px',
+          maxHeight: '70vh',
+          overflowY: 'auto',
         }}>
           <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>📦 {selectedBox.label}</h3>
-          <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>
+          <p style={{ margin: '0 0 15px 0', color: '#666', fontSize: '12px' }}>
             Drag to move • Right-click to delete
           </p>
-          <div style={{ 
-            color: '#999', 
-            fontSize: '12px', 
-            fontStyle: 'italic',
-            padding: '10px',
-            background: '#f5f5f5',
-            borderRadius: '6px',
-            marginBottom: '15px'
-          }}>
-            Items will be displayed here...
+
+          {/* Items Section */}
+          <div style={{ marginBottom: '15px' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#555', fontSize: '14px' }}>Items in storage:</h4>
+            
+            {selectedBox.items && selectedBox.items.length > 0 ? (
+              <div style={{
+                background: '#f9f9f9',
+                borderRadius: '6px',
+                padding: '10px',
+                marginBottom: '10px',
+                maxHeight: '200px',
+                overflowY: 'auto',
+              }}>
+                {selectedBox.items.map((item) => (
+                  <div key={item.id} style={{
+                    color: 'black',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px',
+                    background: 'white',
+                    borderRadius: '4px',
+                    marginBottom: '6px',
+                    fontSize: '13px',
+                  }}>
+                    <span>{item.name}</span>
+                    <button
+                      onClick={() => removeItemFromBox(item.id)}
+                      style={{
+                        background: '#e74c3c',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '4px 8px',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{
+                color: '#999',
+                fontSize: '12px',
+                fontStyle: 'italic',
+                padding: '10px',
+                background: '#f5f5f5',
+                borderRadius: '6px',
+                marginBottom: '10px',
+              }}>
+                No items yet
+              </div>
+            )}
+
+            {/* Add Item Input */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+              <input
+                type="text"
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    addItemToBox(newItemName)
+                  }
+                }}
+                placeholder="Add item..."
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                }}
+              />
+              <button
+                onClick={() => addItemToBox(newItemName)}
+                style={{
+                  padding: '8px 12px',
+                  background: '#27ae60',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                }}
+              >
+                Add
+              </button>
+            </div>
           </div>
+
           <div style={{ display: 'flex', gap: '10px' }}>
             <button 
               onClick={() => setSelectedBox(null)}

@@ -8,12 +8,11 @@ function StorageBox({
   size = [1, 1, 1], 
   color = '#8B4513', 
   label = 'Storage Box', 
+  items = [],
   onClick,
   onDragEnd,
   onDelete,
-  isSelected,
-  roomWidth = 10,
-  roomDepth = 10
+  isSelected 
 }) {
   const [hovered, setHovered] = useState(false)
   const [pos, setPos] = useState(position)
@@ -24,32 +23,10 @@ function StorageBox({
     setPos(position)
   }, [position])
 
-  // Enforce room boundaries every frame
-  useFrame(() => {
-    if (groupRef.current) {
-      const WALL_THICKNESS = 0.1
-      const maxX = roomWidth / 2 - WALL_THICKNESS - size[0] / 2
-      const maxZ = roomDepth / 2 - WALL_THICKNESS - size[2] / 2
-      const minX = -roomWidth / 2 + WALL_THICKNESS + size[0] / 2
-      const minZ = -roomDepth / 2 + WALL_THICKNESS + size[2] / 2
-      
-      // Clamp position every frame
-      if (groupRef.current.position.x < minX || groupRef.current.position.x > maxX) {
-        groupRef.current.position.x = Math.max(minX, Math.min(maxX, groupRef.current.position.x))
-      }
-      if (groupRef.current.position.z < minZ || groupRef.current.position.z > maxZ) {
-        groupRef.current.position.z = Math.max(minZ, Math.min(maxZ, groupRef.current.position.z))
-      }
-      if (groupRef.current.position.y !== position[1]) {
-        groupRef.current.position.y = position[1]
-      }
-    }
-  })
-
   const handleClick = (event) => {
     event.stopPropagation()
     if (onClick) {
-      onClick({ id, label, position: pos })
+      onClick({ id, label, position: pos, items })
     }
   }
 
@@ -62,7 +39,17 @@ function StorageBox({
   }
 
   const handleDrag = () => {
-    // DragControls will handle movement, boundaries enforced in useFrame
+    if (groupRef.current) {
+      const newPos = [
+        Math.max(-4, Math.min(4, groupRef.current.position.x)),
+        position[1], // Keep Y fixed
+        Math.max(-4, Math.min(4, groupRef.current.position.z))
+      ]
+      // Clamp position during drag
+      groupRef.current.position.x = newPos[0]
+      groupRef.current.position.z = newPos[2]
+      groupRef.current.position.y = newPos[1]
+    }
   }
 
   const handleDragEnd = () => {

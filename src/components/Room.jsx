@@ -63,12 +63,11 @@ function Room({ furniture = [], selectedId, onBoxClick, onDragEnd, onDelete }) {
           size={item.size}
           color={item.color}
           label={item.label}
+          items={item.items}
           isSelected={selectedId === item.id}
           onClick={onBoxClick}
           onDragEnd={onDragEnd}
           onDelete={onDelete}
-          roomWidth={ROOM_WIDTH}
-          roomDepth={ROOM_DEPTH}
         />
       ))}
     </group>
