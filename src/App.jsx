@@ -13,11 +13,32 @@ function App() {
   })
   const [showCatalog, setShowCatalog] = useState(false)
   const [newItemName, setNewItemName] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Save furniture to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('roomFurniture', JSON.stringify(furniture))
   }, [furniture])
+
+  // Search for items in storage and get matching storage IDs
+  const getMatchingStorages = () => {
+    if (!searchQuery.trim()) return []
+    
+    const query = searchQuery.toLowerCase()
+    const matchingIds = new Set()
+    
+    furniture.forEach(box => {
+      box.items?.forEach(item => {
+        if (item.name.toLowerCase().includes(query)) {
+          matchingIds.add(box.id)
+        }
+      })
+    })
+    
+    return Array.from(matchingIds)
+  }
+
+  const matchingStorageIds = getMatchingStorages()
 
   // Add new furniture to the room
   const addFurniture = (catalogItem) => {
@@ -128,6 +149,58 @@ function App() {
       >
         {showCatalog ? '✕ Close' : '+ Add Furniture'}
       </button>
+
+      {/* Search Bar */}
+      <div style={{
+        position: 'absolute',
+        top: 20,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 100,
+      }}>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="🔍 Search items..."
+          style={{
+            padding: '12px 16px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            border: '2px solid #ddd',
+            borderRadius: '8px',
+            fontSize: '14px',
+            width: '250px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            color: 'black',
+          }}
+        />
+        {searchQuery && matchingStorageIds.length > 0 && (
+          <div style={{
+            marginTop: '8px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            color: '#333',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}>
+            Found in {matchingStorageIds.length} storage{matchingStorageIds.length !== 1 ? 's' : ''}
+          </div>
+        )}
+        {searchQuery && matchingStorageIds.length === 0 && (
+          <div style={{
+            marginTop: '8px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            color: '#999',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}>
+            No items found
+          </div>
+        )}
+      </div>
 
       {/* Furniture Catalog Panel */}
       {showCatalog && (
@@ -364,6 +437,7 @@ function App() {
         <Room 
           furniture={furniture}
           selectedId={selectedBox?.id}
+          matchingStorageIds={matchingStorageIds}
           onBoxClick={handleBoxClick}
           onDragEnd={handleDragEnd}
           onDelete={handleDelete}

@@ -16,7 +16,7 @@ function Wall({ position, rotation, args, color = '#e8e4de' }) {
   )
 }
 
-function Room({ furniture = [], selectedId, onBoxClick, onDragEnd, onDelete }) {
+function Room({ furniture = [], selectedId, matchingStorageIds = [], onBoxClick, onDragEnd, onDelete }) {
   const roomRef = useRef()
 
   return (
@@ -65,6 +65,7 @@ function Room({ furniture = [], selectedId, onBoxClick, onDragEnd, onDelete }) {
           label={item.label}
           items={item.items}
           isSelected={selectedId === item.id}
+          isHighlighted={matchingStorageIds.includes(item.id)}
           onClick={onBoxClick}
           onDragEnd={onDragEnd}
           allFurniture={furniture}
