@@ -162,6 +162,7 @@ function App() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => setSelectedBox(null)}
           placeholder="🔍 Search items..."
           style={{
             padding: '12px 16px',
