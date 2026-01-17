@@ -24,6 +24,10 @@ function StorageBox({
   const offset = useRef(new THREE.Vector3())
   const { camera, gl, raycaster, pointer } = useThree()
 
+  // Standardized hitbox to keep spacing consistent (smaller gap)
+  const HITBOX = 0.4
+  const effectiveSize = () => [HITBOX, size[1], HITBOX]
+
   // Sync position when prop changes
   useEffect(() => {
     setPos(position)
@@ -45,17 +49,20 @@ function StorageBox({
       if (raycaster.ray.intersectPlane(dragPlane.current, intersection.current)) {
         const newPos = intersection.current.sub(offset.current)
         
-        // Clamp to room boundaries
-        let clampedX = Math.max(-4, Math.min(4, newPos.x))
-        let clampedZ = Math.max(-4, Math.min(4, newPos.z))
+        // Clamp to room boundaries using standardized footprint
+        const half = HITBOX / 2
+        let clampedX = Math.max(-4 + half, Math.min(4 - half, newPos.x))
+        let clampedZ = Math.max(-4 + half, Math.min(4 - half, newPos.z))
         
-        // Check collision with other furniture
+        // Check collision with other furniture using standardized footprint
+        const selfSize = effectiveSize()
         const testPos = [clampedX, position[1], clampedZ]
         let hasCollision = false
         
         for (const furniture of allFurniture) {
           if (furniture.id !== id) {
-            if (checkCollision(testPos, size, furniture.position, furniture.size)) {
+            const otherSize = effectiveSize()
+            if (checkCollision(testPos, selfSize, furniture.position, otherSize)) {
               hasCollision = true
               break
             }
@@ -106,9 +113,10 @@ function StorageBox({
     if (raycaster.ray.intersectPlane(dragPlane.current, intersection.current)) {
       const newPos = intersection.current.sub(offset.current)
       
-      // Clamp to room boundaries
-      const clampedX = Math.max(-4, Math.min(4, newPos.x))
-      const clampedZ = Math.max(-4, Math.min(4, newPos.z))
+      // Clamp to room boundaries using standardized footprint
+      const half = HITBOX / 2
+      const clampedX = Math.max(-4 + half, Math.min(4 - half, newPos.x))
+      const clampedZ = Math.max(-4 + half, Math.min(4 - half, newPos.z))
       
       groupRef.current.position.x = clampedX
       groupRef.current.position.z = clampedZ
