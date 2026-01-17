@@ -127,9 +127,14 @@ function StorageBox({
 
   const handlePointerUp = (event) => {
     if (!isDragging) return
-    event.stopPropagation()
+    if (event) event.stopPropagation()
+    finishDrag()
+  }
+
+  // Finish drag from anywhere (canvas or outside)
+  const finishDrag = () => {
     setIsDragging(false)
-    
+
     if (groupRef.current && onDragEnd) {
       const newPos = [
         groupRef.current.position.x,
@@ -139,9 +144,20 @@ function StorageBox({
       setPos(newPos)
       onDragEnd(id, newPos)
     }
-    
+
     gl.domElement.style.cursor = hovered ? 'grab' : 'auto'
   }
+
+  // End drag if mouse is released outside the canvas
+  useEffect(() => {
+    const handleWindowPointerUp = () => {
+      if (isDragging) {
+        finishDrag()
+      }
+    }
+    window.addEventListener('pointerup', handleWindowPointerUp)
+    return () => window.removeEventListener('pointerup', handleWindowPointerUp)
+  }, [isDragging])
 
   return (
     <>
