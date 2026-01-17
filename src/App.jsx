@@ -202,7 +202,7 @@ function App() {
         }}>
           <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>📦 {selectedBox.label}</h3>
           <p style={{ margin: '0 0 15px 0', color: '#666', fontSize: '12px' }}>
-            Drag to move • Use Delete button to remove
+            Drag to move
           </p>
 
           {/* Items Section */}
@@ -345,7 +345,7 @@ function App() {
         fontSize: '13px',
         zIndex: 100,
       }}>
-        🖱️ Drag furniture to move • Click to select • Use Delete button to remove
+        🖱️ Drag furniture to move • Click to select
       </div>
 
       <Canvas
