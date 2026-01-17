@@ -187,14 +187,14 @@ function StorageBox({
       >
           <boxGeometry args={size} />
           <meshStandardMaterial 
-            color={isSelected ? '#FFD700' : isHighlighted ? '#FF6B6B' : hovered ? '#A0522D' : color}
+            color={isSelected ? '#FFD700' : isHighlighted ? '#FFEB3B' : hovered ? '#A0522D' : color}
           />
         </mesh>
 
         {/* Box lid */}
         <mesh position={[0, size[1] / 2 + 0.02, 0]}>
           <boxGeometry args={[size[0], 0.04, size[2]]} />
-          <meshStandardMaterial color={isSelected ? '#FFA500' : isHighlighted ? '#FF4444' : hovered ? '#CD853F' : '#A0522D'} />
+          <meshStandardMaterial color={isSelected ? '#FFA500' : isHighlighted ? '#FDD835' : hovered ? '#CD853F' : '#A0522D'} />
         </mesh>
       </group>
     </>
