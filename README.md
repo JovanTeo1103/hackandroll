@@ -1,16 +1,116 @@
-# React + Vite
+# 3D Room Storage Organizer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web-based 3D room planner that helps you organize and visualize your storage spaces. Create multiple rooms, add furniture from a catalog, track stored items, and share your room layouts with others.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 🏠 Room Management
+- Create and manage multiple rooms
+- Rename and delete rooms
+- Switch between different room layouts
+- Persistent storage using localStorage
 
-## React Compiler
+### 🪑 Furniture Catalog
+- 10+ furniture types including wardrobes, bookcases, cabinets, drawers, and more
+- Drag-and-drop placement in 3D space
+- Rotate furniture (90° increments)
+- Real-time collision detection prevents overlapping
+- Automatic boundary constraints keep furniture within room walls
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 📦 Item Tracking
+- Add items to each piece of furniture
+- Search across all storage boxes to find specific items
+- Visual highlighting of storage boxes containing searched items
+- Organized item lists with delete functionality
 
-## Expanding the ESLint configuration
+### 🔗 Sharing & Sync
+- Generate shareable URLs to sync rooms across devices
+- URL-based room state encoding
+- Copy share links to clipboard with one click
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 🎨 Interactive 3D Visualization
+- Fully 3D room rendering using Three.js
+- Orbit camera controls for 360° viewing
+- Realistic lighting and shadows
+- Color-coded furniture
+- Selection highlighting
+
+## Tech Stack
+
+- **React** - UI framework
+- **Vite** - Build tool and dev server
+- **Three.js** - 3D rendering engine
+- **React Three Fiber** - React renderer for Three.js
+- **React Three Drei** - Helper utilities for R3F
+- **React Router DOM** - Client-side routing
+- **localStorage** - Data persistence
+
+## Getting Started
+
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/JovanTeo1103/hackandroll.git
+cd hackandroll
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Start the development server:
+```bash
+npm run dev
+```
+
+4. Open your browser and navigate to `http://localhost:5173`
+
+### Building for Production
+
+```bash
+npm run build
+```
+
+The built files will be in the `dist/` directory.
+
+## Usage
+
+1. **Add Furniture**: Click "Add Furniture" to open the catalog and select items to place in your room
+2. **Position Items**: Drag furniture pieces to move them around the room
+3. **Rotate**: Select a piece and click the rotate button to change orientation
+4. **Add Items**: Click on furniture to select it, then use the item panel to add stored items
+5. **Search**: Use the search bar to find items across all storage boxes
+6. **Manage Rooms**: Create new rooms, switch between them, or rename them using the room panel
+7. **Share**: Click the share button to generate a shareable link
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── Room.jsx              # 3D room component with walls and floor
+│   ├── StorageBox.jsx        # Interactive 3D furniture component
+│   ├── ConfirmDialog.jsx     # Confirmation dialog for deletions
+│   ├── ErrorPopup.jsx        # Error notification popup
+│   └── SuccessPopup.jsx      # Success notification popup
+├── data/
+│   └── furnitureCatalog.js   # Furniture type definitions
+├── styles/
+│   ├── ConfirmDialog.css
+│   ├── ErrorPopup.css
+│   └── SuccessPopup.css
+├── App.jsx                   # Main application component
+├── App.css                   # Main styles
+├── main.jsx                  # Application entry point
+└── index.css                 # Global styles
+```
+
+## License
+
+MIT
