@@ -24,9 +24,13 @@ function StorageBox({
   const offset = useRef(new THREE.Vector3())
   const { camera, gl, raycaster, pointer } = useThree()
 
-  // Standardized hitbox to keep spacing consistent (smaller gap)
-  const HITBOX = 0.4
-  const effectiveSize = () => [HITBOX, size[1], HITBOX]
+  // Collision padding to prevent overlap between furniture
+  const COLLISION_PADDING = 0.05
+
+  const getCollisionSize = (furnitureSize) => {
+    const [w, h, d] = furnitureSize || size
+    return [w + COLLISION_PADDING * 2, h, d + COLLISION_PADDING * 2]
+  }
 
   // Sync position when prop changes
   useEffect(() => {
@@ -35,10 +39,9 @@ function StorageBox({
 
   // Check if two boxes overlap (AABB collision)
   const checkCollision = (pos1, size1, pos2, size2) => {
-    const margin = 0.1 // Small margin to prevent touching
     return (
-      Math.abs(pos1[0] - pos2[0]) < (size1[0] + size2[0]) / 2 + margin &&
-      Math.abs(pos1[2] - pos2[2]) < (size1[2] + size2[2]) / 2 + margin
+      Math.abs(pos1[0] - pos2[0]) < (size1[0] + size2[0]) / 2 &&
+      Math.abs(pos1[2] - pos2[2]) < (size1[2] + size2[2]) / 2
     )
   }
 
@@ -49,20 +52,21 @@ function StorageBox({
       if (raycaster.ray.intersectPlane(dragPlane.current, intersection.current)) {
         const newPos = intersection.current.sub(offset.current)
         
-        // Clamp to room boundaries using standardized footprint
-        const half = HITBOX / 2
-        let clampedX = Math.max(-4 + half, Math.min(4 - half, newPos.x))
-        let clampedZ = Math.max(-4 + half, Math.min(4 - half, newPos.z))
+        // Clamp to room boundaries using this furniture's actual collision size
+        const selfCollisionSize = getCollisionSize(size)
+        const halfX = selfCollisionSize[0] / 2
+        const halfZ = selfCollisionSize[2] / 2
+        let clampedX = Math.max(-4 + halfX, Math.min(4 - halfX, newPos.x))
+        let clampedZ = Math.max(-4 + halfZ, Math.min(4 - halfZ, newPos.z))
         
-        // Check collision with other furniture using standardized footprint
-        const selfSize = effectiveSize()
+        // Check collision with other furniture using their actual collision sizes
         const testPos = [clampedX, position[1], clampedZ]
         let hasCollision = false
         
         for (const furniture of allFurniture) {
           if (furniture.id !== id) {
-            const otherSize = effectiveSize()
-            if (checkCollision(testPos, selfSize, furniture.position, otherSize)) {
+            const otherCollisionSize = getCollisionSize(furniture.size)
+            if (checkCollision(testPos, selfCollisionSize, furniture.position, otherCollisionSize)) {
               hasCollision = true
               break
             }
@@ -113,10 +117,12 @@ function StorageBox({
     if (raycaster.ray.intersectPlane(dragPlane.current, intersection.current)) {
       const newPos = intersection.current.sub(offset.current)
       
-      // Clamp to room boundaries using standardized footprint
-      const half = HITBOX / 2
-      const clampedX = Math.max(-4 + half, Math.min(4 - half, newPos.x))
-      const clampedZ = Math.max(-4 + half, Math.min(4 - half, newPos.z))
+      // Clamp to room boundaries using this furniture's actual collision size
+      const selfCollisionSize = getCollisionSize(size)
+      const halfX = selfCollisionSize[0] / 2
+      const halfZ = selfCollisionSize[2] / 2
+      const clampedX = Math.max(-4 + halfX, Math.min(4 - halfX, newPos.x))
+      const clampedZ = Math.max(-4 + halfZ, Math.min(4 - halfZ, newPos.z))
       
       groupRef.current.position.x = clampedX
       groupRef.current.position.z = clampedZ
