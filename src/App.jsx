@@ -102,7 +102,10 @@ function App() {
   }
 
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
+    <div
+      style={{ width: '100vw', height: '100vh' }}
+      onContextMenu={(e) => e.preventDefault()} // Disable browser context menu
+    >
       
       {/* Add Furniture Button */}
       <button
@@ -199,7 +202,7 @@ function App() {
         }}>
           <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>📦 {selectedBox.label}</h3>
           <p style={{ margin: '0 0 15px 0', color: '#666', fontSize: '12px' }}>
-            Drag to move • Right-click to delete
+            Drag to move • Use Delete button to remove
           </p>
 
           {/* Items Section */}
@@ -342,7 +345,7 @@ function App() {
         fontSize: '13px',
         zIndex: 100,
       }}>
-        🖱️ Drag furniture to move • Click to select • Right-click to delete
+        🖱️ Drag furniture to move • Click to select • Use Delete button to remove
       </div>
 
       <Canvas

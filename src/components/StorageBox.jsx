@@ -11,7 +11,6 @@ function StorageBox({
   items = [],
   onClick,
   onDragEnd,
-  onDelete,
   isSelected,
   allFurniture = []
 }) {
@@ -77,14 +76,6 @@ function StorageBox({
     event.stopPropagation()
     if (onClick) {
       onClick({ id, label, position: pos, items })
-    }
-  }
-
-  const handleRightClick = (event) => {
-    event.stopPropagation()
-    event.nativeEvent.preventDefault()
-    if (onDelete) {
-      onDelete(id)
     }
   }
 
@@ -166,7 +157,6 @@ function StorageBox({
       <mesh
         ref={meshRef}
         onClick={handleClick}
-        onContextMenu={handleRightClick}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerOver={(e) => {

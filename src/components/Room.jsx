@@ -67,7 +67,6 @@ function Room({ furniture = [], selectedId, onBoxClick, onDragEnd, onDelete }) {
           isSelected={selectedId === item.id}
           onClick={onBoxClick}
           onDragEnd={onDragEnd}
-          onDelete={onDelete}
           allFurniture={furniture}
         />
       ))}
