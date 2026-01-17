@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import Room from './components/Room'
+import { ErrorPopup } from './components/ErrorPopup'
+import { ConfirmDialog } from './components/ConfirmDialog'
 import { furnitureCatalog } from './data/furnitureCatalog'
 import './App.css'
 
@@ -14,6 +16,8 @@ function App() {
   const [showCatalog, setShowCatalog] = useState(false)
   const [newItemName, setNewItemName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [errorMessage, setErrorMessage] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, id: null })
 
   // Save furniture to localStorage whenever it changes
   useEffect(() => {
@@ -122,7 +126,7 @@ function App() {
 
     // Check if rotation is allowed (no collision, within bounds)
     if (!canRotate(item, newRotation)) {
-      alert('Cannot rotate: would collide with another furniture or wall!')
+      setErrorMessage('Cannot rotate: would collide with another furniture or wall!')
       return
     }
 
@@ -150,12 +154,23 @@ function App() {
 
   // Delete furniture
   const handleDelete = (id) => {
-    if (window.confirm('Delete this furniture?')) {
-      setFurniture(prevFurniture => prevFurniture.filter(item => item.id !== id))
-      if (selectedBox?.id === id) {
+    setDeleteConfirm({ isOpen: true, id })
+  }
+
+  // Confirm delete
+  const confirmDelete = () => {
+    if (deleteConfirm.id) {
+      setFurniture(prevFurniture => prevFurniture.filter(item => item.id !== deleteConfirm.id))
+      if (selectedBox?.id === deleteConfirm.id) {
         setSelectedBox(null)
       }
+      setDeleteConfirm({ isOpen: false, id: null })
     }
+  }
+
+  // Cancel delete
+  const cancelDelete = () => {
+    setDeleteConfirm({ isOpen: false, id: null })
   }
 
   // Select furniture to view/edit
@@ -213,6 +228,20 @@ function App() {
       style={{ width: '100vw', height: '100vh' }}
       onContextMenu={(e) => e.preventDefault()} // Disable browser context menu
     >
+      {/* Error Popup */}
+      <ErrorPopup 
+        message={errorMessage}
+        onClose={() => setErrorMessage(null)}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        title="Delete Furniture"
+        message="Are you sure you want to delete this furniture? This action cannot be undone."
+        isOpen={deleteConfirm.isOpen}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
       
       {/* Add Furniture Button */}
       <button
