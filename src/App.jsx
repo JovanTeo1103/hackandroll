@@ -1,34 +1,233 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { Canvas } from '@react-three/fiber'
+import Room from './components/Room'
+import { furnitureCatalog } from './data/furnitureCatalog'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [selectedBox, setSelectedBox] = useState(null)
+  const [furniture, setFurniture] = useState([]) // Start with empty room
+  const [showCatalog, setShowCatalog] = useState(false)
+
+  // Add new furniture to the room
+  const addFurniture = (catalogItem) => {
+    const newItem = {
+      id: Date.now(), // Unique ID
+      label: catalogItem.label,
+      type: catalogItem.type,
+      position: [0, catalogItem.size[1] / 2, 0], // Place in center, on floor
+      size: catalogItem.size,
+      color: catalogItem.color,
+      items: [], // Empty - user can add items later
+    }
+    setFurniture([...furniture, newItem])
+    setShowCatalog(false)
+  }
+
+  // Update furniture position after drag
+  const handleDragEnd = (id, newPosition) => {
+    setFurniture(furniture.map(item => 
+      item.id === id ? { ...item, position: newPosition } : item
+    ))
+  }
+
+  // Delete furniture
+  const handleDelete = (id) => {
+    if (window.confirm('Delete this furniture?')) {
+      setFurniture(furniture.filter(item => item.id !== id))
+      if (selectedBox?.id === id) {
+        setSelectedBox(null)
+      }
+    }
+  }
+
+  // Select furniture to view/edit
+  const handleBoxClick = (boxInfo) => {
+    setSelectedBox(boxInfo)
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div style={{ width: '100vw', height: '100vh' }}>
+      
+      {/* Add Furniture Button */}
+      <button
+        onClick={() => setShowCatalog(!showCatalog)}
+        style={{
+          position: 'absolute',
+          top: 20,
+          left: 20,
+          padding: '12px 24px',
+          background: showCatalog ? '#e74c3c' : '#27ae60',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontSize: '16px',
+          fontWeight: 'bold',
+          zIndex: 100,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+        }}
+      >
+        {showCatalog ? '✕ Close' : '+ Add Furniture'}
+      </button>
+
+      {/* Furniture Catalog Panel */}
+      {showCatalog && (
+        <div style={{
+          position: 'absolute',
+          top: 70,
+          left: 20,
+          background: 'rgba(255, 255, 255, 0.98)',
+          padding: '20px',
+          borderRadius: '12px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          zIndex: 100,
+          maxHeight: '70vh',
+          overflowY: 'auto',
+          width: '280px',
+        }}>
+          <h3 style={{ margin: '0 0 15px 0', color: '#333' }}>🪑 Furniture Catalog</h3>
+          <p style={{ margin: '0 0 15px 0', color: '#666', fontSize: '12px' }}>
+            Click to add furniture to the room
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {furnitureCatalog.map((item) => (
+              <button
+                key={item.type}
+                onClick={() => addFurniture(item)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  background: '#f5f5f5',
+                  border: '2px solid #ddd',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.background = '#e8f5e9'
+                  e.target.style.borderColor = '#27ae60'
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.background = '#f5f5f5'
+                  e.target.style.borderColor = '#ddd'
+                }}
+              >
+                <span style={{ fontSize: '24px' }}>{item.icon}</span>
+                <div>
+                  <div style={{ fontWeight: 'bold', color: '#333' }}>{item.label}</div>
+                  <div style={{ fontSize: '11px', color: '#888' }}>{item.description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Selected Furniture Panel */}
+      {selectedBox && (
+        <div style={{
+          position: 'absolute',
+          top: 20,
+          right: 20,
+          background: 'rgba(255, 255, 255, 0.95)',
+          padding: '20px',
+          borderRadius: '12px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          zIndex: 100,
+          minWidth: '250px',
+        }}>
+          <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>📦 {selectedBox.label}</h3>
+          <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>
+            Drag to move • Right-click to delete
+          </p>
+          <div style={{ 
+            color: '#999', 
+            fontSize: '12px', 
+            fontStyle: 'italic',
+            padding: '10px',
+            background: '#f5f5f5',
+            borderRadius: '6px',
+            marginBottom: '15px'
+          }}>
+            Items will be displayed here...
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={() => setSelectedBox(null)}
+              style={{
+                flex: 1,
+                padding: '8px 16px',
+                background: '#3498db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+            <button 
+              onClick={() => handleDelete(selectedBox.id)}
+              style={{
+                flex: 1,
+                padding: '8px 16px',
+                background: '#e74c3c',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Instructions */}
+      <div style={{
+        position: 'absolute',
+        bottom: 20,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        background: 'rgba(0,0,0,0.7)',
+        color: 'white',
+        padding: '10px 20px',
+        borderRadius: '8px',
+        fontSize: '13px',
+        zIndex: 100,
+      }}>
+        🖱️ Drag furniture to move • Click to select • Right-click to delete
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+
+      <Canvas
+        shadows
+        camera={{ position: [0, 10, 12], fov: 50 }}
+      >
+        <ambientLight intensity={0.4} />
+        <directionalLight
+          position={[5, 10, 5]}
+          intensity={1}
+          castShadow
+          shadow-mapSize={[1024, 1024]}
+        />
+        <pointLight position={[0, 3, 0]} intensity={0.5} />
+
+        <Room 
+          furniture={furniture}
+          selectedId={selectedBox?.id}
+          onBoxClick={handleBoxClick}
+          onDragEnd={handleDragEnd}
+          onDelete={handleDelete}
+        />
+
+        {/* No OrbitControls - fixed front view */}
+      </Canvas>
+    </div>
   )
 }
 
